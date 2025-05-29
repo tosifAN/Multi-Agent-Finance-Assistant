@@ -34,6 +34,6 @@ pyttsx3==2.98
 SpeechRecognition==3.14.3
 
 # Utilities
-pandas==2.2.3
-numpy==2.2.6
-tqdm==4.67.1    
+pandas
+numpy
+tqdm 
