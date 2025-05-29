@@ -1,3 +1,2 @@
-# Data Ingestion Package
-# This package contains modules for collecting data from various sources
-# including APIs, web scraping, and document loading.
+# Data ingestion package initialization
+# This package contains modules for fetching data from various sources

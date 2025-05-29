@@ -1,213 +1,308 @@
 import os
-import json
-from typing import Dict, List, Optional, Any
-from fastapi import FastAPI, HTTPException, Depends
-from pydantic import BaseModel
-from datetime import datetime
-
-# Import necessary modules
-import sys
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-from dotenv import load_dotenv
-import os
-
-load_dotenv(dotenv_path="../.env")  # Replace with actual path
-
-
-# Define request and response models
-class LanguageRequest(BaseModel):
-    query: str
-    context: Dict[str, Any]
-    parameters: Optional[Dict[str, Any]] = None
-
-class LanguageResponse(BaseModel):
-    status: str
-    data: Dict[str, Any]
-    timestamp: str
-
-# Create the FastAPI app
-app = FastAPI(title="Language Agent", description="Agent for synthesizing narratives via LLM using LangChain's retriever interface")
+from typing import List, Dict, Any
+from crewai import Agent, Task
+from langchain.chat_models import ChatOpenAI
+from langchain.prompts import ChatPromptTemplate
+from langchain.chains import LLMChain
 
 class LanguageAgent:
-    """Agent for synthesizing narratives via LLM"""
+    """Agent for synthesizing narratives from financial data."""
     
-    def __init__(self):
-        """Initialize the language agent"""
-        self.openai_api_key = os.getenv("OPENAI_API_KEY")
-        if self.openai_api_key is None:
-           print("OPENAI_API_KEY environment variable is not set!")
-
-        if not self.openai_api_key:
-            raise ValueError("OpenAI API key is required")
-        
-        try:
-            from langchain.llms import OpenAI
-            from langchain.chains import LLMChain
-            from langchain.prompts import PromptTemplate
-        except ImportError:
-            raise ImportError("Please install langchain: pip install langchain")
-        
-        self.llm = OpenAI(temperature=0.7, openai_api_key=self.openai_api_key)
-    
-    async def generate_market_brief(self, query: str, context: Dict, parameters: Optional[Dict] = None) -> Dict:
-        """Generate a market brief based on the query and context
+    def __init__(self, openai_api_key: str = None):
+        """Initialize the language agent.
         
         Args:
-            query: User query
-            context: Dictionary containing context information
-            parameters: Optional parameters for the generation
+            openai_api_key: OpenAI API key (optional, can use from env)
+        """
+        self.openai_api_key = openai_api_key or os.getenv('OPENAI_API_KEY')
+        self.llm = ChatOpenAI(temperature=0.3, model_name="gpt-3.5-turbo", openai_api_key=self.openai_api_key)
+        
+    def create_agent(self) -> Agent:
+        """Create a CrewAI agent for language operations."""
+        return Agent(
+            role="Financial Narrative Specialist",
+            goal="Synthesize clear, concise, and insightful financial narratives",
+            backstory="""You are an expert financial writer with years of experience in 
+            distilling complex financial data into clear, actionable narratives. Your 
+            specialty is in creating concise market briefs that highlight the most 
+            important information for busy portfolio managers.""",
+            verbose=True,
+            allow_delegation=False
+        )
+    
+    def create_market_brief(self, 
+                           portfolio_data: Dict[str, Any], 
+                           stock_performance: Dict[str, Any], 
+                           earnings_analysis: Dict[str, Any], 
+                           sentiment_analysis: Dict[str, Any], 
+                           risk_analysis: Dict[str, Any]) -> str:
+        """Create a comprehensive market brief based on financial data.
+        
+        Args:
+            portfolio_data: Portfolio allocation data
+            stock_performance: Stock performance analysis
+            earnings_analysis: Earnings surprises analysis
+            sentiment_analysis: Market sentiment analysis
+            risk_analysis: Risk exposure analysis
             
         Returns:
-            Dictionary containing the generated brief
+            Formatted market brief text
         """
-        try:
-            from langchain.prompts import PromptTemplate
-            from langchain.chains import LLMChain
-        except ImportError:
-            raise ImportError("Please install langchain: pip install langchain")
-        
-        # Extract context data
-        risk_exposure = context.get("risk_exposure", {})
-        earnings_analysis = context.get("earnings_analysis", {})
-        market_sentiment = context.get("market_sentiment", {})
-        
         # Create prompt template
         template = """
-        You are a financial advisor providing a morning market brief to a portfolio manager.
+        You are a financial advisor creating a morning market brief for a portfolio manager.
+        Focus on Asia tech stocks exposure and earnings surprises.
         
-        The portfolio manager asked: "{query}"
+        PORTFOLIO DATA:
+        {portfolio_data}
         
-        Based on the following information, provide a concise and informative response:
+        STOCK PERFORMANCE:
+        {stock_performance}
         
-        Risk Exposure:
-        - Asia tech allocation: {allocation_percentage}% of AUM (previously {previous_allocation}%)
-        - Allocation change: {allocation_change}%
-        - Top holdings: {top_holdings}
-        - Volatility: {volatility}
+        EARNINGS ANALYSIS:
+        {earnings_analysis}
         
-        Earnings Analysis:
-        - Significant surprises: {significant_surprises}
+        SENTIMENT ANALYSIS:
+        {sentiment_analysis}
         
-        Market Sentiment:
-        - Overall sentiment: {overall_sentiment}
-        - Key themes: {key_themes}
+        RISK ANALYSIS:
+        {risk_analysis}
         
-        Your response should be professional, concise, and directly address the query.
-        Focus on the most important insights and actionable information.
+        Create a concise, informative market brief that highlights:
+        1. Current Asia tech allocation and change from previous day
+        2. Notable earnings surprises (both positive and negative)
+        3. Overall market sentiment and key factors
+        4. Current risk exposure and recommendations
+        
+        The brief should be conversational but professional, about 3-4 paragraphs long.
         """
         
-        # Format significant surprises for the prompt
-        significant_surprises = earnings_analysis.get("significant_surprises", [])
-        surprises_text = ""
-        for surprise in significant_surprises:
-            direction = surprise.get("direction", "")
-            symbol = surprise.get("symbol", "")
-            name = surprise.get("name", "")
-            percent = surprise.get("surprise_percent", 0)
-            surprises_text += f"{name} ({symbol}) {direction} estimates by {abs(percent)}%, "
+        # Format the input data
+        portfolio_str = f"Asia tech allocation: {portfolio_data.get('asia_tech_allocation_pct', 0):.1f}% of AUM, "
+        portfolio_str += f"previous allocation: {portfolio_data.get('previous_allocation_pct', 0):.1f}%, "
+        portfolio_str += f"change: {portfolio_data.get('allocation_change_pct', 0):+.1f}%"
         
-        if not surprises_text:
-            surprises_text = "No significant earnings surprises"
+        performance_str = stock_performance.get('performance_summary', 'No performance data available')
+        if stock_performance.get('top_performers'):
+            top = stock_performance['top_performers'][0]
+            performance_str += f"\nTop performer: {top.get('name', top.get('symbol', ''))} ({top.get('change_pct', 0):+.1f}%)"
+        if stock_performance.get('bottom_performers'):
+            bottom = stock_performance['bottom_performers'][-1]
+            performance_str += f"\nBottom performer: {bottom.get('name', bottom.get('symbol', ''))} ({bottom.get('change_pct', 0):+.1f}%)"
         
-        # Format top holdings for the prompt
-        top_holdings = risk_exposure.get("concentration_risk", {}).get("top_holdings", {})
-        holdings_text = ", ".join([f"{symbol}: {value:.1f}%" for symbol, value in top_holdings.items()])
+        earnings_str = earnings_analysis.get('surprise_summary', 'No earnings data available')
+        for surprise in earnings_analysis.get('positive_surprises', [])[:2]:
+            earnings_str += f"\n{surprise.get('name', surprise.get('symbol', ''))} beat estimates by {surprise.get('surprise_pct', 0):.1f}%"
+        for surprise in earnings_analysis.get('negative_surprises', [])[:2]:
+            earnings_str += f"\n{surprise.get('name', surprise.get('symbol', ''))} missed estimates by {abs(surprise.get('surprise_pct', 0)):.1f}%"
         
-        # Format key themes for the prompt
-        key_themes = market_sentiment.get("key_themes", {})
-        themes_text = ", ".join([f"{theme}" for theme in key_themes.keys()])
+        sentiment_str = sentiment_analysis.get('sentiment_summary', 'No sentiment data available')
+        for factor in sentiment_analysis.get('key_factors', [])[:3]:
+            sentiment_str += f"\n- {factor.get('headline', '')}"
         
-        # Create prompt
-        prompt = PromptTemplate(
-            input_variables=["query", "allocation_percentage", "previous_allocation", "allocation_change", 
-                           "top_holdings", "volatility", "significant_surprises", "overall_sentiment", "key_themes"],
-            template=template
-        )
+        risk_str = risk_analysis.get('risk_summary', 'No risk analysis available')
+        risk_str += f"\n{risk_analysis.get('allocation_risk', '')}"
+        for factor in risk_analysis.get('risk_factors', [])[:3]:
+            risk_str += f"\n- {factor}"
         
-        # Create chain
+        # Create and run the chain
+        prompt = ChatPromptTemplate.from_template(template)
         chain = LLMChain(llm=self.llm, prompt=prompt)
         
-        # Run chain
-        response = chain.run(
-            query=query,
-            allocation_percentage=risk_exposure.get("allocation_percentage", 0),
-            previous_allocation=risk_exposure.get("previous_allocation", 0),
-            allocation_change=risk_exposure.get("allocation_change", 0),
-            top_holdings=holdings_text,
-            volatility=f"{risk_exposure.get('volatility', 0):.2f}",
-            significant_surprises=surprises_text,
-            overall_sentiment=market_sentiment.get("overall_sentiment", "neutral"),
-            key_themes=themes_text
-        )
+        result = chain.run({
+            'portfolio_data': portfolio_str,
+            'stock_performance': performance_str,
+            'earnings_analysis': earnings_str,
+            'sentiment_analysis': sentiment_str,
+            'risk_analysis': risk_str
+        })
         
-        return {
-            "brief": response.strip(),
-            "query": query
-        }
+        return result.strip()
     
-    async def generate_response(self, query: str, context: Dict, parameters: Optional[Dict] = None) -> Dict:
-        """Generate a response based on the query and context
+    def answer_specific_query(self, query: str, retrieved_data: List[Dict[str, Any]]) -> str:
+        """Answer a specific query using retrieved data.
         
         Args:
             query: User query
-            context: Dictionary containing context information
-            parameters: Optional parameters for the generation
+            retrieved_data: List of retrieved documents
             
         Returns:
-            Dictionary containing the generated response
+            Answer to the query
         """
-        # For now, we'll just use the market brief generation
-        # In a more complex implementation, we could have different response types
-        return await self.generate_market_brief(query, context, parameters)
+        # Create prompt template
+        template = """
+        You are a financial advisor answering a question about Asia tech stocks.
+        
+        USER QUERY:
+        {query}
+        
+        RETRIEVED INFORMATION:
+        {retrieved_info}
+        
+        Provide a clear, concise answer to the query based on the retrieved information.
+        If the information is insufficient to answer the query, acknowledge the limitations
+        and provide the best possible answer with the available data.
+        
+        Your answer should be conversational but professional, about 1-2 paragraphs long.
+        """
+        
+        # Format retrieved information
+        retrieved_info = ""
+        for i, doc in enumerate(retrieved_data):
+            retrieved_info += f"Document {i+1}:\n"
+            retrieved_info += f"Content: {doc.get('content', '')}\n"
+            retrieved_info += f"Confidence: {doc.get('confidence', 0):.1f}%\n\n"
+        
+        if not retrieved_info:
+            retrieved_info = "No relevant information found."
+        
+        # Create and run the chain
+        prompt = ChatPromptTemplate.from_template(template)
+        chain = LLMChain(llm=self.llm, prompt=prompt)
+        
+        result = chain.run({
+            'query': query,
+            'retrieved_info': retrieved_info
+        })
+        
+        return result.strip()
     
-    async def process_request(self, request: LanguageRequest) -> Dict:
-        """Process a language request
+    def generate_recommendations(self, 
+                               portfolio_data: Dict[str, Any], 
+                               stock_performance: Dict[str, Any], 
+                               risk_analysis: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Generate investment recommendations based on analysis.
         
         Args:
-            request: LanguageRequest object
+            portfolio_data: Portfolio allocation data
+            stock_performance: Stock performance analysis
+            risk_analysis: Risk exposure analysis
             
         Returns:
-            Dictionary containing the response data
+            List of recommendation objects
         """
+        # Create prompt template
+        template = """
+        You are a financial advisor generating investment recommendations for a portfolio manager.
+        Focus on Asia tech stocks exposure and risk management.
+        
+        PORTFOLIO DATA:
+        {portfolio_data}
+        
+        STOCK PERFORMANCE:
+        {stock_performance}
+        
+        RISK ANALYSIS:
+        {risk_analysis}
+        
+        Generate 3 specific, actionable investment recommendations based on the data.
+        Each recommendation should include:
+        1. A clear action (buy, sell, hold, rebalance, etc.)
+        2. Specific assets or sectors involved
+        3. A brief rationale for the recommendation
+        
+        Format each recommendation as a JSON object with 'action', 'target', and 'rationale' fields.
+        """
+        
+        # Format the input data (similar to create_market_brief)
+        portfolio_str = f"Asia tech allocation: {portfolio_data.get('asia_tech_allocation_pct', 0):.1f}% of AUM, "
+        portfolio_str += f"previous allocation: {portfolio_data.get('previous_allocation_pct', 0):.1f}%, "
+        portfolio_str += f"change: {portfolio_data.get('allocation_change_pct', 0):+.1f}%"
+        
+        performance_str = stock_performance.get('performance_summary', 'No performance data available')
+        for performer in stock_performance.get('top_performers', [])[:3]:
+            performance_str += f"\n{performer.get('name', performer.get('symbol', ''))} ({performer.get('change_pct', 0):+.1f}%)"
+        for performer in stock_performance.get('bottom_performers', [])[-3:]:
+            performance_str += f"\n{performer.get('name', performer.get('symbol', ''))} ({performer.get('change_pct', 0):+.1f}%)"
+        
+        risk_str = risk_analysis.get('risk_summary', 'No risk analysis available')
+        risk_str += f"\n{risk_analysis.get('allocation_risk', '')}"
+        for factor in risk_analysis.get('risk_factors', []):
+            risk_str += f"\n- {factor}"
+        
+        # Create and run the chain
+        prompt = ChatPromptTemplate.from_template(template)
+        chain = LLMChain(llm=self.llm, prompt=prompt)
+        
+        result = chain.run({
+            'portfolio_data': portfolio_str,
+            'stock_performance': performance_str,
+            'risk_analysis': risk_str
+        })
+        
+        # Parse the recommendations (simplified parsing)
+        recommendations = []
         try:
-            # Generate response
-            response = await self.generate_response(
-                query=request.query,
-                context=request.context,
-                parameters=request.parameters
-            )
+            # Split by recommendation
+            import re
+            import json
             
-            return {
-                "status": "success",
-                "data": response,
-                "timestamp": datetime.now().isoformat()
-            }
+            # Try to extract JSON objects
+            json_pattern = r'\{[^\{\}]*\"action\"[^\{\}]*\"target\"[^\{\}]*\"rationale\"[^\{\}]*\}'
+            matches = re.findall(json_pattern, result)
+            
+            for match in matches:
+                try:
+                    rec = json.loads(match)
+                    if 'action' in rec and 'target' in rec and 'rationale' in rec:
+                        recommendations.append(rec)
+                except:
+                    pass
+            
+            # If no valid JSON found, create structured recommendations from text
+            if not recommendations:
+                lines = result.split('\n')
+                current_rec = {}
+                
+                for line in lines:
+                    if line.lower().startswith('recommendation'):
+                        if current_rec and 'action' in current_rec:
+                            recommendations.append(current_rec)
+                        current_rec = {}
+                    elif ':' in line:
+                        key, value = line.split(':', 1)
+                        key = key.strip().lower()
+                        value = value.strip()
+                        
+                        if key == 'action':
+                            current_rec['action'] = value
+                        elif key in ['target', 'asset', 'sector']:
+                            current_rec['target'] = value
+                        elif key in ['rationale', 'reason']:
+                            current_rec['rationale'] = value
+                
+                if current_rec and 'action' in current_rec:
+                    recommendations.append(current_rec)
         except Exception as e:
-            return {
-                "status": "error",
-                "data": {"error": str(e)},
-                "timestamp": datetime.now().isoformat()
-            }
+            print(f"Error parsing recommendations: {e}")
+            # Fallback to simple recommendations
+            recommendations = [
+                {
+                    'action': 'Review',
+                    'target': 'Asia tech allocation',
+                    'rationale': 'Based on current market conditions and risk analysis'
+                }
+            ]
+        
+        return recommendations
 
-# Dependency to get the language agent
-def get_language_agent():
-    return LanguageAgent()
-
-# API routes
-@app.post("/api/generate", response_model=LanguageResponse)
-async def generate_language(request: LanguageRequest, 
-                         language_agent: LanguageAgent = Depends(get_language_agent)):
-    """Endpoint for generating language responses"""
-    response = await language_agent.process_request(request)
-    return response
-
-@app.get("/health")
-async def health_check():
-    """Health check endpoint"""
-    return {"status": "healthy", "timestamp": datetime.now().isoformat()}
-
-# Run the FastAPI app if this module is executed directly
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8005)
+# Example tasks for the language agent
+def create_language_tasks(agent: Agent) -> List[Task]:
+    """Create tasks for the language agent."""
+    return [
+        Task(
+            description="Create a comprehensive morning market brief focusing on Asia tech stocks",
+            agent=agent,
+            expected_output="A concise, informative market brief highlighting current allocation, earnings surprises, sentiment, and risk exposure"
+        ),
+        Task(
+            description="Generate specific investment recommendations based on the current analysis",
+            agent=agent,
+            expected_output="A list of actionable investment recommendations with clear rationales based on the data analysis"
+        ),
+        Task(
+            description="Answer the portfolio manager's specific query about risk exposure in Asia tech stocks",
+            agent=agent,
+            expected_output="A clear, concise answer to the query based on the retrieved information and analysis"
+        )
+    ]

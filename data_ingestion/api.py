@@ -1,35 +1,23 @@
 import os
 import pandas as pd
 from typing import Dict, List, Any
-from crewai import Agent, Task
 from alpha_vantage.timeseries import TimeSeries
+from alpha_vantage.sectorperformance import SectorPerformances
 import yfinance as yf
 from datetime import datetime, timedelta, timezone
 
-class APIAgent:
-    """Agent for fetching market data from financial APIs."""
+class FinancialDataAPI:
+    """Class for fetching financial data from various APIs."""
     
-    def __init__(self, api_key: str = None):
-        """Initialize the API agent.
+    def __init__(self, alpha_vantage_api_key: str = None):
+        """Initialize the financial data API.
         
         Args:
-            api_key: Alpha Vantage API key (optional, can use from env)
+            alpha_vantage_api_key: Alpha Vantage API key (optional, can use from env)
         """
-        self.alpha_vantage_api_key = api_key or os.getenv('ALPHA_VANTAGE_API_KEY')
+        self.alpha_vantage_api_key = alpha_vantage_api_key or os.getenv('ALPHA_VANTAGE_API_KEY')
         self.ts = TimeSeries(key=self.alpha_vantage_api_key, output_format='pandas')
-        
-    def create_agent(self) -> Agent:
-        """Create a CrewAI agent for API operations."""
-        return Agent(
-            role="Financial Data API Specialist",
-            goal="Fetch accurate and timely financial market data from various APIs",
-            backstory="""You are an expert in financial data APIs with years of 
-            experience in retrieving and processing market information. Your specialty 
-            is in connecting to various financial data sources and extracting relevant 
-            information efficiently.""",
-            verbose=True,
-            allow_delegation=False
-        )
+        self.sp = SectorPerformances(key=self.alpha_vantage_api_key, output_format='pandas')
     
     def get_stock_data(self, symbol: str, interval: str = 'daily', output_size: str = 'compact') -> pd.DataFrame:
         """Fetch stock data from Alpha Vantage.
@@ -102,7 +90,7 @@ class APIAgent:
             Dictionary with sector performance percentages
         """
         try:
-            sector_perf, meta_data = self.ts.get_sector()
+            sector_perf, meta_data = self.sp.get_sector()
             # Extract the latest performance data
             latest_perf = sector_perf['Rank A: Real-Time Performance']
             return latest_perf.to_dict()
@@ -279,24 +267,3 @@ class APIAgent:
             'allocation_change_pct': allocation_change_pct,
             'holdings': holdings_data
         }
-
-# Example tasks for the API agent
-def create_api_tasks(agent: Agent) -> List[Task]:
-    """Create tasks for the API agent."""
-    return [
-        Task(
-            description="Fetch current data for major Asia tech stocks",
-            agent=agent,
-            expected_output="A comprehensive dataset of current prices, changes, and volumes for major Asia tech stocks"
-        ),
-        Task(
-            description="Identify recent earnings surprises in the Asia tech sector",
-            agent=agent,
-            expected_output="A list of companies with significant earnings surprises (positive or negative) in the last reporting period"
-        ),
-        Task(
-            description="Calculate the portfolio's current exposure to Asia tech stocks",
-            agent=agent,
-            expected_output="A detailed breakdown of the portfolio's allocation to Asia tech stocks, including percentage of AUM and change from previous period"
-        )
-    ]

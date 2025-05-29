@@ -1,78 +1,56 @@
 # Multi-Agent Finance Assistant
 
-A multi-source, multi-agent finance assistant that delivers spoken market briefs via a Streamlit app. This system provides portfolio managers with daily market insights, risk exposure analysis, and earnings surprises through a voice interface.
-
-## Project Overview
-
-This finance assistant integrates multiple specialized agents to deliver comprehensive market analysis:
-
-- **API Agent**: Polls real-time & historical market data via AlphaVantage/Yahoo Finance
-- **Scraping Agent**: Crawls financial filings using Python loaders
-- **Retriever Agent**: Indexes embeddings in FAISS/Pinecone and retrieves relevant information
-- **Analysis Agent**: Performs quantitative analysis on financial data
-- **Language Agent**: Synthesizes narrative via LLM using LangChain's retriever interface
-- **Voice Agent**: Handles Speech-to-Text (Whisper) → LLM → Text-to-Speech pipelines
+A multi-source, multi-agent finance assistant that delivers spoken market briefs via a Streamlit app. This system implements advanced data-ingestion pipelines (APIs, web scraping, document loaders), indexes embeddings in a vector store for Retrieval-Augmented Generation (RAG), and orchestrates specialized agents via FastAPI microservices.
 
 ## Architecture
 
-### Microservices Architecture
+The system is built with a microservices architecture using FastAPI for each agent:
 
-The system is built using FastAPI microservices for each agent, with the following routing logic:
-
-```
-Voice input → STT → Orchestrator → RAG/Analysis → LLM → TTS or text
-```
-
-If retrieval confidence is below threshold, the system prompts user clarification via voice.
-
-### Technology Stack
-
-- **Data Ingestion**: APIs, web scraping, document loaders
-- **Vector Store**: FAISS for embedding indexing and retrieval
-- **Agent Frameworks**: LangGraph and CrewAI
-- **Voice Processing**: Whisper (STT) and open-source TTS
-- **Frontend**: Streamlit
-- **API Gateway**: FastAPI
-
-## Setup Instructions
-
-### Prerequisites
-
-- Python 3.9+
-- Docker (optional for containerization)
-
-### Installation
-
-1. Clone the repository
-2. Install dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
-3. Set up environment variables (API keys, etc.)
-4. Run all the servers(agents)
-5. Run the application:
-   ```
-   streamlit run streamlit_app/app.py
-   ```
+- **API Agent**: Polls real-time & historical market data via AlphaVantage or Yahoo Finance
+- **Scraping Agent**: Crawls financial filings and news
+- **Retriever Agent**: Indexes embeddings in FAISS and retrieves top-k chunks
+- **Analysis Agent**: Performs financial analysis on retrieved data
+- **Language Agent**: Synthesizes narrative via LLM using LangChain's retriever interface
+- **Voice Agent**: Handles STT (Whisper) → LLM → TTS pipelines
 
 ## Project Structure
 
 ```
-/data_ingestion - Data collection modules (API, scraping)
-/agents - Individual agent implementations
-/orchestrator - Agent coordination and workflow management
-/streamlit_app - User interface and deployment
-/docs - Documentation including AI tool usage logs
+/
+├── agents/                # Agent implementations
+├── data_ingestion/        # Data ingestion pipelines
+├── orchestrator/          # Agent orchestration logic
+├── streamlit_app/         # Streamlit frontend
+├── docs/                  # Documentation
+├── requirements.txt       # Dependencies
+└── .env.example          # Environment variables template
 ```
+
+## Setup Instructions
+
+1. Clone the repository
+2. Create a virtual environment: `python -m venv venv`
+3. Activate the virtual environment:
+   - Windows: `venv\Scripts\activate`
+   - Unix/MacOS: `source venv/bin/activate`
+4. Install dependencies: `pip install -r requirements.txt`
+5. Copy `.env.example` to `.env` and fill in your API keys
+6. Start the services:
+   - FastAPI services: `python -m orchestrator.main`
+   - Streamlit app: `streamlit run streamlit_app/app.py`
+
+## Framework & Toolkit Choices
+
+- **Agent Framework**: CrewAI for agent orchestration
+- **Vector Store**: FAISS for efficient similarity search
+- **LLM**: OpenAI for natural language processing
+- **Voice Processing**: Whisper for STT, gTTS/pyttsx3 for TTS
+- **Data Processing**: Alpha Vantage and Yahoo Finance APIs, BeautifulSoup for web scraping
 
 ## Performance Benchmarks
 
 (To be added after implementation)
 
-## Framework Comparisons
-
-(To be added after implementation)
-
 ## License
 
-Open Source - MIT
+Open Source

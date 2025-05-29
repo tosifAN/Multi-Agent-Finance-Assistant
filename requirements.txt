@@ -1,8 +1,11 @@
+alpha-vantage
+langchain-pinecone
+
+gTTS
 # Core dependencies
 python-dotenv==1.1.0
 fastapi==0.115.12
 uvicorn==0.34.2
-streamlit==1.45.1
 pydantic==2.11.5
 
 # Agent frameworks
@@ -12,8 +15,7 @@ langgraph==0.4.7
 crewai==0.121.0
 
 # Vector stores
-faiss-cpu==1.11.0
-pinecone==7.0.1
+pinecone==7.0.2
 
 # Embedding models
 openai==1.75.0
@@ -21,7 +23,6 @@ sentence-transformers==4.1.0
 
 # Data ingestion
 yfinance==0.2.61
-#alphavantage-api==1.0.0
 beautifulsoup4==4.13.4
 requests==2.32.3
 python-docx==1.1.2
@@ -35,5 +36,4 @@ SpeechRecognition==3.14.3
 # Utilities
 pandas==2.2.3
 numpy==2.2.6
-matplotlib==3.10.3
-tqdm==4.67.1
+tqdm==4.67.1    

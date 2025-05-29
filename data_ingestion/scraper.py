@@ -2,28 +2,14 @@ import os
 import requests
 from typing import List, Dict, Any
 from bs4 import BeautifulSoup
-from crewai import Agent, Task
 import pandas as pd
 
-class ScrapingAgent:
-    """Agent for scraping financial news and filings."""
+class FinancialScraper:
+    """Class for scraping financial news and filings from web sources."""
     
     def __init__(self):
-        """Initialize the scraping agent."""
-        pass
-        
-    def create_agent(self) -> Agent:
-        """Create a CrewAI agent for web scraping operations."""
-        return Agent(
-            role="Financial Data Scraping Specialist",
-            goal="Extract relevant financial information from web sources",
-            backstory="""You are an expert in web scraping and data extraction with years of 
-            experience in retrieving financial information from various online sources. Your 
-            specialty is in navigating complex financial websites and extracting structured 
-            data from unstructured content.""",
-            verbose=True,
-            allow_delegation=False
-        )
+        """Initialize the financial scraper."""
+        self.headers = {'User-Agent': 'Mozilla/5.0'}
     
     def scrape_financial_news(self, keywords: List[str] = None) -> List[Dict[str, Any]]:
         """Scrape financial news related to Asia tech stocks.
@@ -35,8 +21,7 @@ class ScrapingAgent:
             List of dictionaries with news data
         """
         if keywords is None:
-            #keywords depends on portfolio
-            keywords = ['Asia tech', 'semiconductor', 'TSMC', 'Samsung', 'Alibaba', 'BABA', 'Taiwan Semiconductor', '005930.KS', 'Samsung Electronics','BIDU', 'Baidu', 'JD', 'JD.com', 'PDD', 'PDD Holdings']
+            keywords = ['Asia tech', 'semiconductor', 'TSMC', 'Samsung', 'Alibaba']
         
         news_sources = [
             {
@@ -61,12 +46,12 @@ class ScrapingAgent:
         
         for source in news_sources:
             try:
-                response = requests.get(source['url'], headers={'User-Agent': 'Mozilla/5.0'})
+                response = requests.get(source['url'], headers=self.headers)
                 if response.status_code == 200:
                     soup = BeautifulSoup(response.text, 'html.parser')
                     articles = soup.select(source['article_selector'])
                     
-                    for article in articles[:5]:  # Limit to 5 articles per source
+                    for article in articles[:10]:  # Limit to 10 articles per source
                         try:
                             title_elem = article.select_one(source['title_selector'])
                             link_elem = article.select_one(source['link_selector'])
@@ -116,7 +101,7 @@ class ScrapingAgent:
         for symbol in symbols:
             try:
                 url = f"https://finance.yahoo.com/quote/{symbol}/analysis"
-                response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'})
+                response = requests.get(url, headers=self.headers)
                 
                 if response.status_code == 200:
                     soup = BeautifulSoup(response.text, 'html.parser')
@@ -168,7 +153,7 @@ class ScrapingAgent:
         
         for source in sentiment_sources:
             try:
-                response = requests.get(source['url'], headers={'User-Agent': 'Mozilla/5.0'})
+                response = requests.get(source['url'], headers=self.headers)
                 if response.status_code == 200:
                     soup = BeautifulSoup(response.text, 'html.parser')
                     
@@ -214,24 +199,3 @@ class ScrapingAgent:
                 print(f"Error scraping sentiment from {source['name']}: {e}")
         
         return sentiment_data
-
-# Example tasks for the scraping agent
-def create_scraping_tasks(agent: Agent) -> List[Task]:
-    """Create tasks for the scraping agent."""
-    return [
-        Task(
-            description="Scrape the latest financial news related to Asia tech stocks",
-            agent=agent,
-            expected_output="A collection of recent news articles about Asia tech companies, with titles, summaries, and links"
-        ),
-        Task(
-            description="Extract recent earnings reports and analyst expectations for major Asia tech companies",
-            agent=agent,
-            expected_output="Structured data from earnings reports including EPS estimates, actual results, and surprises"
-        ),
-        Task(
-            description="Analyze current market sentiment indicators for the Asia tech sector",
-            agent=agent,
-            expected_output="An assessment of market sentiment with key indicators and an overall sentiment score"
-        )
-    ]

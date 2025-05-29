@@ -1,3 +1,2 @@
-# Orchestrator Package
-# This package contains modules for coordinating and managing the various agents
-# in the finance assistant system.
+# Orchestrator package initialization
+# This package contains the orchestration logic for the finance assistant
