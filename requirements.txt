@@ -12,7 +12,7 @@ pydantic==2.11.5
 langchain==0.3.25
 langchain-experimental==0.3.4
 langgraph==0.4.7
-crewai==0.121.0
+crewai
 
 # Vector stores
 pinecone==7.0.2
