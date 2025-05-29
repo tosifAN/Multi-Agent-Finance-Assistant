@@ -1,5 +1,5 @@
-app = "multi-agent-finance-assistant"  # Replace with your Fly.io app name
-primary_region = "bom"  # Replace with your preferred region
+app = "multi-agent-finance-assistant"
+primary_region = "bom"
 
 [build]
   builder = "paketobuildpacks/builder:base"
@@ -13,6 +13,7 @@ primary_region = "bom"  # Replace with your preferred region
 [[services]]
   internal_port = 8080
   protocol = "tcp"
+  processes = ["app"]  # Associate this service with the 'app' process
 
   [[services.ports]]
     port = 80
