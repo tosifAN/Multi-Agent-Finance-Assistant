@@ -44,6 +44,13 @@ The system is built with a microservices architecture using FastAPI for each age
 - **Market Data Freshness**: < 3min delay
 - **Synthesis Quality**:  OpenAI
 
+## Futual Goals
+- Make it a MCP hosted in cloud server.
+- Add some agents like DuckDuckGo for online search functionality.
+- Wanna to add some remote MCP's.
+- Hosted that cloud server that reduces the latency.
+
+
 ## Research
 - Starting with the building using various agent library like phi, Langgraph and finally CrewAI
 - Build the understanding on MCP's
